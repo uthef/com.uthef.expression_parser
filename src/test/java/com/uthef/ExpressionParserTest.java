@@ -1,6 +1,7 @@
 package com.uthef;
 
 import com.uthef.expression_parser.*;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -10,7 +11,12 @@ import static org.junit.jupiter.api.Assertions.*;
 public class ExpressionParserTest {
 
     ExpressionParser expParser = new ExpressionParser();
-    
+
+    @Before
+    public void clearNamespace() {
+        expParser.setNamespace(null); // creates a new empty namespace
+    }
+
     @Test
     public void parenthesisAndDifferentStylesOfNumbers() throws ParsingException {
         double result  = expParser.evaluate("30 - 5. * (02.5 + (2.000 + .5)) + 0,000");
@@ -36,13 +42,26 @@ public class ExpressionParserTest {
     }
 
     @Test
+    public void scientificNotation() throws ParsingException {
+        expParser.getNamespace().putVariable("e", Math.E);
+        expParser.getNamespace().putFunction("e", Math::exp);
+
+        double result = expParser.evaluate("e(1e+1-0e-1+0)+(-1.5e2)+e+12");
+        assertEquals(Math.exp(10) + (-150) + Math.E + 12, result);
+    }
+
+    @Test
+    public void whitespaceFreeExpression() throws ParsingException{
+        double result = expParser.evaluate("(10+8-5)*10.0");
+        assertEquals(130.0, result);
+    }
+
+    @Test
     public void variable() throws ParsingException {
         expParser.getNamespace().putVariable("PI", Math.PI);
 
-        double result = expParser.evaluate("PI * 2");
-        assertEquals(Math.PI * 2, result);
-
-        expParser.getNamespace().clear();
+        double result = expParser.evaluate("(-PI) * 2");
+        assertEquals(-Math.PI * 2, result);
     }
 
     @Test
@@ -54,8 +73,6 @@ public class ExpressionParserTest {
 
         double result = expParser.evaluate("1 + x * abs(neg(x))");
         assertEquals(145.0, result);
-
-        expParser.getNamespace().clear();
     }
 
     @Test
@@ -63,12 +80,8 @@ public class ExpressionParserTest {
         expParser.getNamespace().putVariable("x", 48.0);
         expParser.getNamespace().putFunction("sqrt", Math::sqrt);
 
-
-
         double result = expParser.evaluate("(x + 1) / (sqrt(x + 1) + (sqrt((x + 1) / 1.0)))");
         assertEquals(3.5, result);
-
-        expParser.getNamespace().clear();
     }
 
     @ParameterizedTest
@@ -76,11 +89,13 @@ public class ExpressionParserTest {
             "-50 + +",
             "+8",
             "10 * 2 + (300",
-            "12abcd",
+            "12-abcd",
             "50 * 5 - )",
             "-",
             "-2332 + -5",
-            "1 + .2." })
+            "1 + .2.",
+            "3e",
+            "3.0e*20"})
     public void exceptionCase(String expression) {
         assertThrows(ParsingException.class, () -> expParser.evaluate(expression));
     }

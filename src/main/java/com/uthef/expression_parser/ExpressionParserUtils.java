@@ -36,13 +36,18 @@ class ExpressionParserUtils {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(expression.charAt(cursor.get()));
 
+        boolean metExp = false, metExpOp = false;
+
         int index = cursor.incrementAndGet(), start = index - 1;
 
         for (; index < expression.length(); index = cursor.incrementAndGet()) {
             char c = expression.charAt(index);
 
             if (c == ',') continue;
-            if (!isArabicDigit(c) && c != '.') break;
+
+            if (c == 'e' && !metExp) metExp = true;
+            else if (metExp && !metExpOp && (c == '+' || c == '-')) metExpOp = true;
+            else if (!isArabicDigit(c) && c != '.' ) break;
 
             stringBuilder.append(c);
         }
@@ -51,11 +56,13 @@ class ExpressionParserUtils {
 
         double number;
 
+        String numberStr = stringBuilder.toString();
+
         try {
-            number = Double.parseDouble(stringBuilder.toString());
+            number = Double.parseDouble(numberStr);
         }
         catch (NumberFormatException e) {
-            throw new ParsingException("Badly formatted number", start);
+            throw new ParsingException(String.format("Badly formatted number \"%s\"", numberStr), start);
         }
 
         return number;
